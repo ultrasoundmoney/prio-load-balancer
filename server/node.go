@@ -54,7 +54,7 @@ func (n *Node) startProxyWorker(id int32, cancelContext context.Context) {
 
 			if time.Since(req.CreatedAt) > RequestTimeout {
 				_log.Info("request timed out before processing")
-				req.SendResponse(SimResponse{Error: ErrRequestTimeout})
+				req.SendResponse(SimResponse{Error: ErrRequestTimeout, StatusCode: http.StatusRequestTimeout})
 				continue
 			}
 

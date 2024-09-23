@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"go.uber.org/zap"
@@ -78,7 +79,7 @@ func (s *Server) Start() {
 
 		if time.Since(r.CreatedAt) > RequestTimeout {
 			s.log.Info("request timed out before processing")
-			r.SendResponse(SimResponse{Error: ErrRequestTimeout})
+			r.SendResponse(SimResponse{Error: ErrRequestTimeout, StatusCode: http.StatusRequestTimeout})
 			continue
 		}
 
