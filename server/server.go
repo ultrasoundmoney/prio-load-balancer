@@ -97,7 +97,7 @@ func (s *Server) Start() {
 		case <-time.After(ServerJobSendTimeout):
 			// Job was NOT taken by a node - cancel request
 			s.log.Warnw("job was not taken by a node", "requestsInQueue", s.prioQueue.NumRequests())
-			r.SendResponse(SimResponse{Error: ErrNodeTimeout})
+			r.SendResponse(SimResponse{Error: ErrNodeTimeout, StatusCode: http.StatusGatewayTimeout})
 		}
 	}
 }
