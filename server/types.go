@@ -10,6 +10,7 @@ type SimRequest struct {
 	ID          string
 	IsHighPrio  bool
 	IsFastTrack bool
+	IsSsz       bool // Payload is SSZ, proxied to the node's SSZ port
 
 	Payload   []byte
 	ResponseC chan SimResponse

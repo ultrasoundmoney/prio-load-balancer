@@ -123,6 +123,7 @@ func NewNode(log *zap.SugaredLogger, uri string, jobC chan *SimRequest, numWorke
 	node := &Node{
 		log:        log,
 		URI:        uri,
+		sszURI:     sszNodeURI(pURL),
 		AddedAt:    time.Now(),
 		jobC:       jobC,
 		numWorkers: numWorkers,

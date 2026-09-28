@@ -5,7 +5,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -17,6 +19,7 @@ import (
 type Node struct {
 	log           *zap.SugaredLogger
 	URI           string
+	sszURI        string
 	AddedAt       time.Time
 	jobC          chan *SimRequest
 	numWorkers    int32
@@ -26,9 +29,21 @@ type Node struct {
 	client        *http.Client
 }
 
+// sszNodeURI is the node URI with its port swapped for SszNodePort, so the node registry in
+// redis keeps a single URI per node.
+func sszNodeURI(pURL *url.URL) string {
+	if SszNodePort == "" {
+		return ""
+	}
+
+	sszURL := *pURL
+	sszURL.Host = net.JoinHostPort(pURL.Hostname(), SszNodePort)
+	return sszURL.String()
+}
+
 func (n *Node) HealthCheck() error {
 	payload := `{"jsonrpc":"2.0","method":"net_version","params":[],"id":123}`
-	_, _, err := n.ProxyRequest(context.Background(), []byte(payload), 5*time.Second)
+	_, _, err := n.ProxyRequest(context.Background(), []byte(payload), false, 5*time.Second)
 	return err
 }
 
@@ -60,7 +75,7 @@ func (n *Node) startProxyWorker(id int32, cancelContext context.Context) {
 
 			req.Tries += 1
 			timeBeforeProxy := time.Now().UTC()
-			payload, statusCode, err := n.ProxyRequest(req.Context, req.Payload, ProxyRequestTimeout)
+			payload, statusCode, err := n.ProxyRequest(req.Context, req.Payload, req.IsSsz, ProxyRequestTimeout)
 			requestDuration := time.Since(timeBeforeProxy)
 			_log = _log.With("requestDurationUS", requestDuration.Microseconds())
 			if err != nil {
@@ -117,16 +132,22 @@ func (n *Node) StopWorkersAndWait() {
 	}
 }
 
-func (n *Node) ProxyRequest(ctx context.Context, payload []byte, timeout time.Duration) (resp []byte, statusCode int, err error) {
+func (n *Node) ProxyRequest(ctx context.Context, payload []byte, isSsz bool, timeout time.Duration) (resp []byte, statusCode int, err error) {
+	uri, contentType := n.URI, "application/json"
+	if isSsz {
+		uri, contentType = n.sszURI, ContentTypeSsz
+	}
+
 	ctxx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	httpReq, err := http.NewRequestWithContext(ctxx, "POST", n.URI, bytes.NewBuffer(payload))
+	httpReq, err := http.NewRequestWithContext(ctxx, "POST", uri, bytes.NewBuffer(payload))
 	if err != nil {
 		return resp, statusCode, errors.Wrap(err, "creating proxy request failed")
 	}
 
+	// The SSZ server answers in JSON as well
 	httpReq.Header.Set("Accept", "application/json")
-	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", contentType)
 	httpReq.Header.Set("Content-Length", strconv.Itoa(len(payload)))
 
 	httpResp, err := n.client.Do(httpReq)
