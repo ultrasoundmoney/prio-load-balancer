@@ -32,7 +32,14 @@ var (
 	ProxyMaxConnsPerHost     = GetEnvInt("ProxyMaxConnsPerHost", 100)
 	ProxyMaxIdleConnsPerHost = GetEnvInt("ProxyMaxIdleConnsPerHost", 100)
 	ProxyIdleConnTimeout     = time.Duration(GetEnvInt("ProxyIdleConnTimeout", 90)) * time.Second
+
+	// Port of the nodes' SSZ validation server (reth --ssz-block-validation.port), on the same host
+	// as the registered node URI. SSZ requests are rejected while unset.
+	SszNodePort = os.Getenv("SSZ_NODE_PORT")
 )
+
+// ContentTypeSsz marks requests that are proxied to SszNodePort instead of the node URI
+const ContentTypeSsz = "application/octet-stream"
 
 func LogConfig(log *zap.SugaredLogger) {
 	log.Infow("config",
@@ -53,5 +60,6 @@ func LogConfig(log *zap.SugaredLogger) {
 		"ProxyMaxConnsPerHost", ProxyMaxConnsPerHost,
 		"ProxyMaxIdleConnsPerHost", ProxyMaxIdleConnsPerHost,
 		"ProxyIdleConnTimeout", ProxyIdleConnTimeout,
+		"SszNodePort", SszNodePort,
 	)
 }

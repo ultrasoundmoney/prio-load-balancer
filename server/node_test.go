@@ -56,7 +56,7 @@ func TestNodeError(t *testing.T) {
 	require.Contains(t, err.Error(), "479")
 
 	// Check failing ProxyRequest
-	_, statusCode, err := node.ProxyRequest(context.Background(), []byte("net_version"), 3*time.Second)
+	_, statusCode, err := node.ProxyRequest(context.Background(), []byte("net_version"), false, 3*time.Second)
 	require.NotNil(t, err, err)
 	require.Equal(t, 479, statusCode)
 

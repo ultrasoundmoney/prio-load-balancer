@@ -93,6 +93,12 @@ func (s *Webserver) HandleQueueRequest(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	isSsz := req.Header.Get("Content-Type") == ContentTypeSsz
+	if isSsz && SszNodePort == "" {
+		http.Error(w, "SSZ requests are disabled, SSZ_NODE_PORT is unset", http.StatusUnsupportedMediaType)
+		return
+	}
+
 	ctx := req.Context()
 	if ctx.Err() != nil {
 		log.Infow("client closed the connection before processing", "err", ctx.Err())
@@ -103,6 +109,7 @@ func (s *Webserver) HandleQueueRequest(w http.ResponseWriter, req *http.Request)
 	isFastTrack := req.Header.Get("X-Fast-Track") == "true"
 	isHighPrio := req.Header.Get("high_prio") == "true" || req.Header.Get("X-High-Priority") == "true"
 	simReq := NewSimRequest(ctx, reqID, body, isHighPrio, isFastTrack)
+	simReq.IsSsz = isSsz
 	wasAdded := s.prioQueue.Push(simReq)
 	if !wasAdded { // queue was full, job not added
 		log.Error("Couldn't add request, queue is full")
@@ -121,6 +128,7 @@ func (s *Webserver) HandleQueueRequest(w http.ResponseWriter, req *http.Request)
 	log = log.With(
 		"requestIsHighPrio", isHighPrio,
 		"requestIsFastTrack", isFastTrack,
+		"requestIsSsz", isSsz,
 		"payloadSize", len(body),
 
 		"startQueueSize", s.prioQueue.NumRequests(),
